@@ -57,6 +57,7 @@ class QTextBlockFormat;
 class QTextListFormat;
 class QTextTableFormat;
 class QTextFrameFormat;
+class QTextInlineFrameHandlerFormat;
 class QTextImageFormat;
 class QTextDocumentPrivate;
 class QTextList;
@@ -195,6 +196,9 @@ public:
 
     QTextFrame *insertFrame(const QTextFrameFormat &format);
     QTextFrame *currentFrame() const;
+
+    void insertInlineFrame(const QTextInlineFrameHandlerFormat &format);
+    void insertInlineFrame(QTextFrame *frame);
 
     void insertFragment(const QTextDocumentFragment &fragment);
 

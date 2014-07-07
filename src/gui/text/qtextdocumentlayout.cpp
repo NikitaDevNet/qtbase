@@ -45,6 +45,7 @@
 #include "qtexttable.h"
 #include "qtextlist.h"
 #include "qtextengine_p.h"
+#include "qtextobject_p.h"
 #include "private/qcssutil_p.h"
 #include "private/qguiapplication_p.h"
 
@@ -2816,6 +2817,8 @@ QTextDocumentLayout::QTextDocumentLayout(QTextDocument *doc)
     : QAbstractTextDocumentLayout(*new QTextDocumentLayoutPrivate, doc)
 {
     registerHandler(QTextFormat::ImageObject, new QTextImageHandler(this));
+    registerHandler(QTextFormat::InlineFrameHandlerObject,
+                    new QTextInlineFrameHandler(this));
 }
 
 
@@ -2846,6 +2849,16 @@ void QTextDocumentLayout::draw(QPainter *painter, const PaintContext &context)
     d->drawFrame(QPointF(), painter, context, frame);
     fd->size.width = width;
 }
+
+
+void QTextDocumentLayout::drawFrame(const QPointF &offset, QPainter *painter,
+               const QAbstractTextDocumentLayout::PaintContext &context,
+               QTextFrame *frame)
+{
+    Q_D(QTextDocumentLayout);
+    d->drawFrame(offset, painter, context, frame);
+}
+
 
 void QTextDocumentLayout::setViewport(const QRectF &viewport)
 {

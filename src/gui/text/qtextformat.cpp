@@ -495,7 +495,7 @@ Q_GUI_EXPORT QDataStream &operator>>(QDataStream &stream, QTextFormat &fmt)
 
     The format type is given by type(), and the format can be tested
     with isCharFormat(), isBlockFormat(), isListFormat(),
-    isTableFormat(), isFrameFormat(), and isImageFormat(). If the
+    isTableFormat(), isFrameFormat(), isInlineFrameHandlerFormat(), and isImageFormat(). If the
     type is determined, it can be retrieved with toCharFormat(),
     toBlockFormat(), toListFormat(), toTableFormat(), toFrameFormat(),
     and toImageFormat().
@@ -755,6 +755,14 @@ Q_GUI_EXPORT QDataStream &operator>>(QDataStream &stream, QTextFormat &fmt)
 
 
 /*!
+    \fn bool QTextFormat::isInlineFrameHandlerFormat() const
+
+    Returns \c true if this text format is a \c InlineFrameHandlerFormat; otherwise
+    returns \c false.
+*/
+
+
+/*!
     \fn bool QTextFormat::isImageFormat() const
 
     Returns \c true if this text format is an image format; otherwise
@@ -915,6 +923,14 @@ QTextTableFormat QTextFormat::toTableFormat() const
 QTextFrameFormat QTextFormat::toFrameFormat() const
 {
     return QTextFrameFormat(*this);
+}
+
+/*!
+    Returns this format as a inline frame format.
+*/
+QTextInlineFrameHandlerFormat QTextFormat::toInlineFrameHandlerFormat() const
+{
+    return QTextInlineFrameHandlerFormat(*this);
 }
 
 /*!
@@ -2829,6 +2845,59 @@ qreal QTextFrameFormat::rightMargin() const
 
     Returns the height of the frame's border rectangle.
 */
+
+
+/*!
+    \fn QTextInlineFrameHandlerFormat::QTextInlineFrameHandlerFormat()
+
+    Constructs a text inline frame handler format object with the default
+    properties.
+*/
+QTextInlineFrameHandlerFormat::QTextInlineFrameHandlerFormat()
+    : QTextCharFormat()
+{
+    setObjectType(InlineFrameHandlerObject);
+}
+
+
+/*!
+    \internal
+    \fn QTextInlineFrameHandlerFormat::QTextInlineFrameHandlerFormat(const QTextFormat &other)
+
+    Creates a new inline frame handler format with the same attributes as
+    the \a given text format.
+*/
+QTextInlineFrameHandlerFormat::QTextInlineFrameHandlerFormat(const QTextFormat &fmt)
+    : QTextCharFormat(fmt)
+{
+}
+
+
+/*!
+    \fn void QTextInlineFrameHandlerFormat::setFrame(QTextFrame * frame)
+
+    Set pointer to \a frame.
+*/
+void QTextInlineFrameHandlerFormat::setFrame(QTextFrame *frame)
+{
+    QVariant qvFrame = QVariant::fromValue(static_cast<void *> (frame));
+    setProperty(QTextFormat::FramePointer, qvFrame);
+}
+
+
+/*!
+    \fn QTextFrame * QTextInlineFrameHandlerFormat::getFrame() const
+
+    Return pointer to QTextFrame.
+*/
+QTextFrame * QTextInlineFrameHandlerFormat::getFrame() const
+{
+    return static_cast<QTextFrame *>
+            (qvariant_cast<void *>
+             (property(QTextFormat::FramePointer)));
+}
+
+
 
 /*!
     \class QTextTableFormat

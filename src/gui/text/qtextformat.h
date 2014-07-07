@@ -65,6 +65,7 @@ class QTextCharFormat;
 class QTextListFormat;
 class QTextTableFormat;
 class QTextFrameFormat;
+class QTextInlineFrameHandlerFormat;
 class QTextImageFormat;
 class QTextTableCellFormat;
 class QTextFormat;
@@ -72,6 +73,7 @@ class QTextObject;
 class QTextCursor;
 class QTextDocument;
 class QTextLength;
+class QTextFrame;
 
 #ifndef QT_NO_DATASTREAM
 Q_GUI_EXPORT QDataStream &operator<<(QDataStream &, const QTextLength &);
@@ -230,6 +232,8 @@ public:
         FrameBorderBrush = 0x4009,
         FrameBorderStyle = 0x4010,
 
+        FramePointer = 0x4050,
+
         TableColumns = 0x4100,
         TableColumnWidthConstraints = 0x4101,
         TableCellSpacing = 0x4102,
@@ -271,6 +275,7 @@ public:
         ImageObject,
         TableObject,
         TableCellObject,
+        InlineFrameHandlerObject,
 
         UserObject = 0x1000
     };
@@ -332,6 +337,7 @@ public:
     inline bool isBlockFormat() const { return type() == BlockFormat; }
     inline bool isListFormat() const { return type() == ListFormat; }
     inline bool isFrameFormat() const { return type() == FrameFormat; }
+    inline bool isInlineFrameHandlerFormat() const { return type() == CharFormat && objectType() == InlineFrameHandlerObject; }
     inline bool isImageFormat() const { return type() == CharFormat && objectType() == ImageObject; }
     inline bool isTableFormat() const { return type() == FrameFormat && objectType() == TableObject; }
     inline bool isTableCellFormat() const { return type() == CharFormat && objectType() == TableCellObject; }
@@ -341,6 +347,7 @@ public:
     QTextListFormat toListFormat() const;
     QTextTableFormat toTableFormat() const;
     QTextFrameFormat toFrameFormat() const;
+    QTextInlineFrameHandlerFormat toInlineFrameHandlerFormat() const;
     QTextImageFormat toImageFormat() const;
     QTextTableCellFormat toTableCellFormat() const;
 
@@ -852,6 +859,23 @@ protected:
 };
 
 Q_DECLARE_SHARED(QTextFrameFormat)
+
+class Q_GUI_EXPORT QTextInlineFrameHandlerFormat : public QTextCharFormat
+{
+public:
+    explicit QTextInlineFrameHandlerFormat();
+
+    bool isValid() const { return isInlineFrameHandlerFormat(); }
+
+    void setFrame(QTextFrame *frame);
+    QTextFrame * getFrame() const;
+
+protected:
+    explicit QTextInlineFrameHandlerFormat(const QTextFormat &fmt);
+    friend class QTextFormat;
+};
+
+Q_DECLARE_SHARED(QTextInlineFrameHandlerFormat)
 
 inline void QTextFrameFormat::setBorder(qreal aborder)
 { setProperty(FrameBorder, aborder); }

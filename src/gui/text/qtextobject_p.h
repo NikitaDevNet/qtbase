@@ -54,8 +54,10 @@
 //
 
 #include "QtGui/qtextobject.h"
+#include "QtCore/qobject.h"
 #include "private/qobject_p.h"
 #include "QtGui/qtextdocument.h"
+#include "QtGui/qabstracttextdocumentlayout.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -108,6 +110,23 @@ public:
     QList<QTextFrame *> childFrames;
     QTextFrameLayoutData *layoutData;
 };
+
+
+class Q_GUI_EXPORT QTextInlineFrameHandler :
+        public QObject, public QTextObjectInterface
+{
+    Q_OBJECT
+    Q_INTERFACES(QTextObjectInterface)
+
+public:
+    explicit QTextInlineFrameHandler(QObject *parent = 0);
+
+    QSizeF intrinsicSize(QTextDocument *doc, int posInDocument,
+                         const QTextFormat &format);
+    void drawObject(QPainter *painter, const QRectF &rect, QTextDocument *doc,
+                    int posInDocument, const QTextFormat &format);
+};
+
 
 QT_END_NAMESPACE
 

@@ -77,6 +77,10 @@ public:
     void draw(QPainter *painter, const PaintContext &context);
     int hitTest(const QPointF &point, Qt::HitTestAccuracy accuracy) const;
 
+    void drawFrame(const QPointF &offset, QPainter *painter,
+                   const QAbstractTextDocumentLayout::PaintContext &context,
+                   QTextFrame *frame);
+
     int pageCount() const;
     QSizeF documentSize() const;
 

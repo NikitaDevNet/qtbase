@@ -42,11 +42,13 @@
 #include "qtextobject.h"
 #include "qtextobject_p.h"
 #include "qtextdocument.h"
+#include "qtextformat.h"
 #include "qtextformat_p.h"
 #include "qtextdocument_p.h"
 #include "qtextcursor.h"
 #include "qtextlist.h"
 #include "qabstracttextdocumentlayout.h"
+#include "qtextdocumentlayout_p.h"
 #include "qtextengine_p.h"
 #include "qdebug.h"
 
@@ -526,6 +528,47 @@ void QTextFrame::setLayoutData(QTextFrameLayoutData *data)
     Q_D(QTextFrame);
     delete d->layoutData;
     d->layoutData = data;
+}
+
+
+QTextInlineFrameHandler::QTextInlineFrameHandler(QObject *parent)
+    : QObject(parent)
+{
+}
+
+
+QSizeF QTextInlineFrameHandler::intrinsicSize(
+        QTextDocument *doc, int posInDocument, const QTextFormat &format)
+{
+
+}
+
+
+void QTextInlineFrameHandler::drawObject(
+        QPainter *painter, const QRectF &rect, QTextDocument *doc,
+        int posInDocument, const QTextFormat &format)
+{
+    Q_UNUSED(posInDocument)
+
+    QTextInlineFrameHandlerFormat ifhformat =
+            format.toInlineFrameHandlerFormat();
+
+    if (ifhformat.isValid()) {
+
+        QTextFrame *frame = ifhformat.getFrame();
+
+        QAbstractTextDocumentLayout::PaintContext context;
+
+        QAbstractTextDocumentLayout *layout = doc->documentLayout();
+        QTextDocumentLayout *tlayout =
+                qobject_cast<QTextDocumentLayout *> (layout);
+
+        if (tlayout)
+            tlayout->drawFrame(rect.topLeft(), painter, context, frame);
+/// TODO (Fn): QAbstractTextDocumentLayout::drawFrame
+//        else
+//            layout->drawFrame(rect.topLeft(), painter, context, frame);
+    }
 }
 
 
