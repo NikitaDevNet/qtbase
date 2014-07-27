@@ -103,7 +103,8 @@ class QTextBlockData : public QFragment<3>
 {
 public:
     inline void initialize()
-        { layout = 0; userData = 0; userState = -1; revision = 0; hidden = 0; }
+        { layout = 0; userData = 0; userState = -1; revision = 0; hidden = 0;
+        hasInlineFrame = 0; }
     void invalidate() const;
     inline void free()
     { delete layout; layout = 0; delete userData; userData = 0; }
@@ -113,8 +114,9 @@ public:
     mutable QTextLayout *layout;
     mutable QTextBlockUserData *userData;
     mutable int userState;
-    mutable int revision : 31;
+    mutable int revision : 30;
     mutable uint hidden : 1;
+    mutable uint hasInlineFrame : 1;
 };
 
 

@@ -1263,6 +1263,9 @@ void QTextDocumentLayoutPrivate::drawFlow(const QPointF &offset, QPainter *paint
         QTextCharFormat format = const_cast<QTextDocumentLayout *>(q)->format(pos);
         QTextObjectInterface *handler = q->handlerForObject(format.objectType());
         if (handler) {
+
+            /// TODO (Fn): frameBoundingRectInternal(frame) for FloatInline
+
             QRectF rect = frameBoundingRectInternal(frame);
             handler->drawObject(painter, rect, document, pos, format);
         }
@@ -2000,6 +2003,11 @@ void QTextDocumentLayoutPrivate::positionFloat(QTextFrame *frame, QTextLine *cur
     if (!pd->floats.contains(frame))
         pd->floats.append(frame);
     fd->layoutDirty = true;
+
+    if (fd->sizeDirty &&
+            frame->frameFormat().position() == QTextFrameFormat::FloatInline)
+        return;
+
     Q_ASSERT(!fd->sizeDirty);
 
 //     qDebug() << "positionFloat:" << frame << "width=" << fd->size.width;
@@ -2028,12 +2036,18 @@ void QTextDocumentLayoutPrivate::positionFloat(QTextFrame *frame, QTextLine *cur
     QFixed left, right;
     floatMargins(y, layoutStruct, &left, &right);
 
-    if (frame->frameFormat().position() == QTextFrameFormat::FloatLeft) {
+    QTextFrameFormat::Position position = frame->frameFormat().position();
+
+    if (position == QTextFrameFormat::FloatLeft) {
         fd->position.x = left;
         fd->position.y = y;
-    } else {
+    } else if (position == QTextFrameFormat::FloatRight) {
         fd->position.x = right - fd->size.width;
         fd->position.y = y;
+    } else { // position == QTextFrameFormat::FloatInline
+        /// TODO (Fn): fd->position for FloatInline
+//        fd->position.x = ;
+//        fd->position.y = y;
     }
 
     layoutStruct->minimumWidth = qMax(layoutStruct->minimumWidth, fd->minimumWidth);
@@ -2097,7 +2111,7 @@ QRectF QTextDocumentLayoutPrivate::layoutFrame(QTextFrame *f, int layoutFrom, in
         // accumulate top and bottom margins
         if (parent) {
             fd->effectiveTopMargin = pd->effectiveTopMargin + fd->topMargin + fd->border + fd->padding;
-            fd->effectiveBottomMargin = pd->effectiveBottomMargin + fd->topMargin + fd->border + fd->padding;
+            fd->effectiveBottomMargin = pd->effectiveBottomMargin + fd->bottomMargin + fd->border + fd->padding;
 
             if (qobject_cast<QTextTable *>(parent)) {
                 const QTextTableData *td = static_cast<const QTextTableData *>(pd);
@@ -2188,6 +2202,7 @@ QRectF QTextDocumentLayoutPrivate::layoutFrame(QTextFrame *f, int layoutFrom, in
     fd->minimumWidth = layoutStruct.minimumWidth;
     fd->maximumWidth = layoutStruct.maximumWidth;
 
+    /// TODO (Fn): layoutFrame for FloatInline
     fd->size.height = fd->contentsHeight == -1
                  ? layoutStruct.y + fd->border + fd->padding + fd->bottomMargin
                  : fd->contentsHeight + 2*(fd->border + fd->padding) + fd->topMargin + fd->bottomMargin;
@@ -2256,9 +2271,26 @@ void QTextDocumentLayoutPrivate::layoutFlow(QTextFrame::Iterator it, QTextLayout
 
     QTextBlockFormat previousBlockFormat = previousIt.currentBlock().blockFormat();
 
+    bool hasInlineFr = false;
+
     QFixed maximumBlockWidth = 0;
     while (!it.atEnd()) {
         QTextFrame *c = it.currentFrame();
+
+        if (hasInlineFr) {
+            if (!c) {
+                hasInlineFr = it.currentBlock().hasInlineFrame();
+            }
+
+            Q_ASSERT(!c || c->frameFormat().position() ==
+                     QTextFrameFormat::FloatInline);
+
+            ++it;
+            continue;
+        }
+
+        Q_ASSERT(!c ||
+                 c->frameFormat().position() != QTextFrameFormat::FloatInline);
 
         int docPos;
         if (it.currentFrame())
@@ -2405,6 +2437,9 @@ void QTextDocumentLayoutPrivate::layoutFlow(QTextFrame::Iterator it, QTextLayout
                 lastIt = previousIt;
             previousIt = it;
             QTextBlock block = it.currentBlock();
+
+            hasInlineFr = block.hasInlineFrame();
+
             ++it;
 
             const QTextBlockFormat blockFormat = block.blockFormat();
@@ -2774,10 +2809,20 @@ void QTextDocumentLayoutPrivate::floatMargins(const QFixed &y, const QTextLayout
         if (!fd->layoutDirty) {
             if (fd->position.y <= y && fd->position.y + fd->size.height > y) {
 //                 qDebug() << "adjusting with float" << f << fd->position.x()<< fd->size.width();
-                if (lfd->floats.at(i)->frameFormat().position() == QTextFrameFormat::FloatLeft)
+
+                QTextFrameFormat::Position position =
+                        lfd->floats.at(i)->frameFormat().position();
+
+                if (position == QTextFrameFormat::FloatLeft)
                     *left = qMax(*left, fd->position.x + fd->size.width);
-                else
+                else if (position == QTextFrameFormat::FloatRight)
                     *right = qMin(*right, fd->position.x);
+                else {// position == QTextFrameFormat::FloatInline
+                    /// TODO (Fn): floatMargins for FloatInline
+//                    *left = ;
+//                    *right = ;
+                }
+
             }
         }
     }
@@ -2985,6 +3030,24 @@ QRectF QTextDocumentLayout::doLayout(int from, int oldLength, int length)
     return updateRect;
 }
 
+QSizeF QTextDocumentLayout::frameSize(QTextFrame *frame)
+{
+    Q_D(QTextDocumentLayout);
+
+    if(data(frame)->sizeDirty) {
+
+        const QTextDocumentPrivate::FragmentMap &map =
+                d->docPrivate->fragmentMap();
+
+        int fromFrag = map.findNode(frame->firstPosition() -1);
+        int toFrag = map.findNode(frame->lastPosition() +1);
+
+        return d->layoutFrame(frame, fromFrag, toFrag).size();
+
+    } else
+        return data(frame)->size.toSizeF();
+}
+
 int QTextDocumentLayout::hitTest(const QPointF &point, Qt::HitTestAccuracy accuracy) const
 {
     Q_D(const QTextDocumentLayout);
@@ -3020,19 +3083,47 @@ void QTextDocumentLayout::resizeInlineObject(QTextInlineObject item, int posInDo
     if (!handler.component)
         return;
 
-    QSizeF intrinsic = handler.iface->intrinsicSize(d->document, posInDocument, format);
+
+//    QSizeF intrinsic = handler.iface->intrinsicSize(d->document, posInDocument, format);
+
+//    QTextFrameFormat::Position pos = QTextFrameFormat::InFlow;
+//    QTextFrame *frame = qobject_cast<QTextFrame *>(d->document->objectForFormat(f));
+//    if (frame) {
+//        pos = frame->frameFormat().position();
+//        QTextFrameData *fd = data(frame);
+//        fd->sizeDirty = false;
+//        fd->size = QFixedSize::fromSizeF(intrinsic);
+//        fd->minimumWidth = fd->maximumWidth = fd->size.width;
+//    }
+
+//    QSizeF inlineSize = (pos == QTextFrameFormat::InFlow ? intrinsic : QSizeF(0, 0));
+
+
+    QSizeF intrinsic = handler.iface->intrinsicSize(
+                d->document, posInDocument, format);
 
     QTextFrameFormat::Position pos = QTextFrameFormat::InFlow;
-    QTextFrame *frame = qobject_cast<QTextFrame *>(d->document->objectForFormat(f));
+    QTextFrame *frame = qobject_cast<QTextFrame *>
+            (d->document->objectForFormat(f));
+
     if (frame) {
         pos = frame->frameFormat().position();
-        QTextFrameData *fd = data(frame);
-        fd->sizeDirty = false;
-        fd->size = QFixedSize::fromSizeF(intrinsic);
-        fd->minimumWidth = fd->maximumWidth = fd->size.width;
+
+        if (pos != QTextFrameFormat::FloatInline) {
+            QTextFrameData *fd = data(frame);
+            fd->sizeDirty = false;
+            fd->size = QFixedSize::fromSizeF(intrinsic);
+            fd->minimumWidth = fd->maximumWidth = fd->size.width;
+        }
     }
 
-    QSizeF inlineSize = (pos == QTextFrameFormat::InFlow ? intrinsic : QSizeF(0, 0));
+    QSizeF inlineSize =
+            (pos == QTextFrameFormat::InFlow ||
+             pos == QTextFrameFormat::FloatInline
+             ? intrinsic
+             : QSizeF(0, 0));
+
+
     item.setWidth(inlineSize.width());
 
     QFontMetrics m(f.font());
@@ -3086,7 +3177,9 @@ void QTextDocumentLayout::drawInlineObject(QPainter *p, const QRectF &rect, QTex
     QTextCharFormat f = format.toCharFormat();
     Q_ASSERT(f.isValid());
     QTextFrame *frame = qobject_cast<QTextFrame *>(d->document->objectForFormat(f));
-    if (frame && frame->frameFormat().position() != QTextFrameFormat::InFlow)
+    if (frame && frame->frameFormat().position() != QTextFrameFormat::InFlow
+             && frame->frameFormat().position() !=
+                  QTextFrameFormat::FloatInline)
         return; // don't draw floating frames from inline objects here but in drawFlow instead
 
 //    qDebug() << "drawObject at" << r;

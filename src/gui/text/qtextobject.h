@@ -203,6 +203,7 @@ public:
     inline QTextBlock &operator=(const QTextBlock &o) { p = o.p; n = o.n; return *this; }
 
     bool isValid() const;
+    bool hasInlineFrame() const;
 
     inline bool operator==(const QTextBlock &o) const { return p == o.p && n == o.n; }
     inline bool operator!=(const QTextBlock &o) const { return p != o.p || n != o.n; }
@@ -278,6 +279,8 @@ public:
 
     QTextBlock next() const;
     QTextBlock previous() const;
+
+    QTextBlock nextAfterInlineFrame() const;
 
     inline QTextDocumentPrivate *docHandle() const { return p; }
     inline int fragmentIndex() const { return n; }

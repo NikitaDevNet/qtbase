@@ -2872,33 +2872,6 @@ QTextInlineFrameHandlerFormat::QTextInlineFrameHandlerFormat(const QTextFormat &
 {
 }
 
-
-/*!
-    \fn void QTextInlineFrameHandlerFormat::setFrame(QTextFrame * frame)
-
-    Set pointer to \a frame.
-*/
-void QTextInlineFrameHandlerFormat::setFrame(QTextFrame *frame)
-{
-    QVariant qvFrame = QVariant::fromValue(static_cast<void *> (frame));
-    setProperty(QTextFormat::FramePointer, qvFrame);
-}
-
-
-/*!
-    \fn QTextFrame * QTextInlineFrameHandlerFormat::getFrame() const
-
-    Return pointer to QTextFrame.
-*/
-QTextFrame * QTextInlineFrameHandlerFormat::getFrame() const
-{
-    return static_cast<QTextFrame *>
-            (qvariant_cast<void *>
-             (property(QTextFormat::FramePointer)));
-}
-
-
-
 /*!
     \class QTextTableFormat
     \reentrant

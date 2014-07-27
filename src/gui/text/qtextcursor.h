@@ -197,9 +197,6 @@ public:
     QTextFrame *insertFrame(const QTextFrameFormat &format);
     QTextFrame *currentFrame() const;
 
-    void insertInlineFrame(const QTextInlineFrameHandlerFormat &format);
-    void insertInlineFrame(QTextFrame *frame);
-
     void insertFragment(const QTextDocumentFragment &fragment);
 
 #ifndef QT_NO_TEXTHTMLPARSER

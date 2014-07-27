@@ -62,6 +62,7 @@ QT_BEGIN_NAMESPACE
 class QTextListFormat;
 class QTextTableCell;
 class QTextDocumentLayoutPrivate;
+class QTextInlineFrameHandler;
 
 class Q_GUI_EXPORT QTextDocumentLayout : public QAbstractTextDocumentLayout
 {
@@ -117,7 +118,11 @@ protected:
     virtual void timerEvent(QTimerEvent *e);
 private:
     QRectF doLayout(int from, int oldLength, int length);
+    QSizeF frameSize(QTextFrame *frame);
+
     void layoutFinished();
+
+    friend class QTextInlineFrameHandler;
 };
 
 QT_END_NAMESPACE

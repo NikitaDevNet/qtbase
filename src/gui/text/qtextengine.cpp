@@ -1565,37 +1565,54 @@ void QTextEngine::itemize() const
 
     const QTextDocumentPrivate *p = block.docHandle();
     if (p) {
-        SpecialData *s = specialData;
+        QTextBlock currBlock = block;
 
-        QTextDocumentPrivate::FragmentIterator it = p->find(block.position());
-        QTextDocumentPrivate::FragmentIterator end = p->find(block.position() + block.length() - 1); // -1 to omit the block separator char
-        int format = it.value()->format;
-
-        int prevPosition = 0;
-        int position = prevPosition;
         while (1) {
-            const QTextFragmentData * const frag = it.value();
-            if (it == end || format != frag->format) {
-                if (s && position >= s->preeditPosition) {
-                    position += s->preeditText.length();
-                    s = 0;
+            SpecialData *s = currBlock.layout()->engine()->specialData;
+
+            QTextDocumentPrivate::FragmentIterator it =
+                    p->find(currBlock.position());
+            QTextDocumentPrivate::FragmentIterator end =
+                    p->find(currBlock.position() + currBlock.length() - 1);
+            // -1 to omit the block separator char
+
+            int format = it.value()->format;
+
+            int prevPosition = 0;
+            int position = prevPosition;
+            while (1) {
+                const QTextFragmentData * const frag = it.value();
+                if (it == end || format != frag->format) {
+                    if (s && position >= s->preeditPosition) {
+                        position += s->preeditText.length();
+                        s = 0;
+                    }
+                    Q_ASSERT(position <= length);
+                    QFont::Capitalization capitalization =
+                            formats()->charFormat(format)
+                            .hasProperty(QTextFormat::FontCapitalization)
+                            ? formats()->charFormat(format).fontCapitalization()
+                            : formats()->defaultFont().capitalization();
+                    itemizer.generate(prevPosition, position - prevPosition,
+                                      capitalization);
+                    if (it == end) {
+                        if (position < length)
+                            itemizer.generate(position, length - position,
+                                              capitalization);
+                        break;
+                    }
+                    format = frag->format;
+                    prevPosition = position;
                 }
-                Q_ASSERT(position <= length);
-                QFont::Capitalization capitalization =
-                        formats()->charFormat(format).hasProperty(QTextFormat::FontCapitalization)
-                        ? formats()->charFormat(format).fontCapitalization()
-                        : formats()->defaultFont().capitalization();
-                itemizer.generate(prevPosition, position - prevPosition, capitalization);
-                if (it == end) {
-                    if (position < length)
-                        itemizer.generate(position, length - position, capitalization);
-                    break;
-                }
-                format = frag->format;
-                prevPosition = position;
+                position += frag->size_array[0];
+                ++it;
             }
-            position += frag->size_array[0];
-            ++it;
+
+            if (currBlock.hasInlineFrame()) {
+                currBlock = currBlock.nextAfterInlineFrame();
+                Q_ASSERT(currBlock.isValid());
+            } else
+                break;
         }
     } else {
 #ifndef QT_NO_RAWFONT

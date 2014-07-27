@@ -92,6 +92,9 @@ public:
     { return format(index).toTableFormat(); }
     inline QTextImageFormat imageFormat(int index) const
     { return format(index).toImageFormat(); }
+    inline
+    QTextInlineFrameHandlerFormat inlineFrameHandlerFormat(int index) const
+    { return format(index).toInlineFrameHandlerFormat(); }
 
     inline int numFormats() const { return formats.count(); }
 

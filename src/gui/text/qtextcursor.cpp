@@ -2227,34 +2227,6 @@ QTextFrame *QTextCursor::currentFrame() const
 }
 
 /*!
-    Inserts a frame as inline with the given \a format at the current cursor
-    position().
-*/
-void QTextCursor::insertInlineFrame(const QTextInlineFrameHandlerFormat &format)
-{
-    insertText(QString(QChar::ObjectReplacementCharacter), format);
-}
-
-/*!
-    Inserts a \a frame as inline at the current cursor position().
-*/
-void QTextCursor::insertInlineFrame(QTextFrame *frame)
-{
-    if (!frame) {
-        qWarning(
-            "QTextCursor::insertInlineFrame: attempt to add an invalid frame");
-
-        return;
-    }
-
-    QTextInlineFrameHandlerFormat format;
-    format.setFrame(frame);
-
-    insertInlineFrame(format);
-}
-
-
-/*!
     Inserts the text \a fragment at the current position().
 */
 void QTextCursor::insertFragment(const QTextDocumentFragment &fragment)

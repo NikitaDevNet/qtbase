@@ -232,8 +232,6 @@ public:
         FrameBorderBrush = 0x4009,
         FrameBorderStyle = 0x4010,
 
-        FramePointer = 0x4050,
-
         TableColumns = 0x4100,
         TableColumnWidthConstraints = 0x4101,
         TableCellSpacing = 0x4102,
@@ -779,7 +777,8 @@ public:
     enum Position {
         InFlow,
         FloatLeft,
-        FloatRight
+        FloatRight,
+        FloatInline
         // ######
 //        Absolute
     };
@@ -860,23 +859,6 @@ protected:
 
 Q_DECLARE_SHARED(QTextFrameFormat)
 
-class Q_GUI_EXPORT QTextInlineFrameHandlerFormat : public QTextCharFormat
-{
-public:
-    explicit QTextInlineFrameHandlerFormat();
-
-    bool isValid() const { return isInlineFrameHandlerFormat(); }
-
-    void setFrame(QTextFrame *frame);
-    QTextFrame * getFrame() const;
-
-protected:
-    explicit QTextInlineFrameHandlerFormat(const QTextFormat &fmt);
-    friend class QTextFormat;
-};
-
-Q_DECLARE_SHARED(QTextInlineFrameHandlerFormat)
-
 inline void QTextFrameFormat::setBorder(qreal aborder)
 { setProperty(FrameBorder, aborder); }
 
@@ -902,6 +884,22 @@ inline void QTextFrameFormat::setLeftMargin(qreal amargin)
 
 inline void QTextFrameFormat::setRightMargin(qreal amargin)
 { setProperty(FrameRightMargin, amargin); }
+
+
+class Q_GUI_EXPORT QTextInlineFrameHandlerFormat : public QTextCharFormat
+{
+public:
+    explicit QTextInlineFrameHandlerFormat();
+
+    bool isValid() const { return isInlineFrameHandlerFormat(); }
+
+protected:
+    explicit QTextInlineFrameHandlerFormat(const QTextFormat &fmt);
+    friend class QTextFormat;
+};
+
+Q_DECLARE_SHARED(QTextInlineFrameHandlerFormat)
+
 
 class Q_GUI_EXPORT QTextTableFormat : public QTextFrameFormat
 {

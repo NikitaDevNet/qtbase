@@ -340,10 +340,12 @@ void QTextDocumentPrivate::insert_string(int pos, uint strPos, uint length, int 
 
     Q_ASSERT(blocks.length() == fragments.length());
 
-    QTextFrame *frame = qobject_cast<QTextFrame *>(objectForFormat(format));
-    if (frame) {
-        frame->d_func()->fragmentAdded(text.at(strPos), x);
-        framesDirty = true;
+    if (!formats.format(format).isInlineFrameHandlerFormat()) {
+        QTextFrame *frame = qobject_cast<QTextFrame *>(objectForFormat(format));
+        if (frame) {
+            frame->d_func()->fragmentAdded(text.at(strPos), x);
+            framesDirty = true;
+        }
     }
 
     adjustDocumentChangesAndCursors(pos, length, op);
@@ -1484,7 +1486,7 @@ void QTextDocumentPrivate::scan_frames(int pos, int charsRemoved, int charsAdded
     for (FragmentIterator it = begin(); it != end(); ++it) {
         // QTextFormat fmt = formats.format(it->format);
         QTextFrame *frame = qobject_cast<QTextFrame *>(objectForFormat(it->format));
-        if (!frame)
+        if (!frame || formats.format(it->format).isInlineFrameHandlerFormat())
             continue;
 
         Q_ASSERT(it.size() == 1);
@@ -1558,6 +1560,21 @@ QTextFrame *QTextDocumentPrivate::insertFrame(int start, int end, const QTextFra
 
     QTextFrame *frame = qobject_cast<QTextFrame *>(createObject(format));
     Q_ASSERT(frame);
+
+    if (format.position() == QTextFrameFormat::FloatInline) {
+
+        /// TODO (Fn): QTextUndoCommand::MoveCursor
+
+        QTextInlineFrameHandlerFormat ifhformat;
+        ifhformat.setObjectIndex(frame->objectIndex());
+
+        insert(start, QString(QChar::ObjectReplacementCharacter),
+               formats.indexForFormat(ifhformat));
+        blocks.find(start).value()->hasInlineFrame = 1;
+
+        ++start;
+        ++end;
+    }
 
     // #### using the default block and char format below might be wrong
     int idx = formats.indexForFormat(QTextBlockFormat());

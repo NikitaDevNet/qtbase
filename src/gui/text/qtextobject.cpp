@@ -540,7 +540,35 @@ QTextInlineFrameHandler::QTextInlineFrameHandler(QObject *parent)
 QSizeF QTextInlineFrameHandler::intrinsicSize(
         QTextDocument *doc, int posInDocument, const QTextFormat &format)
 {
+    Q_UNUSED(posInDocument)
 
+    QTextInlineFrameHandlerFormat ifhformat =
+            format.toInlineFrameHandlerFormat();
+
+    Q_ASSERT(ifhformat.isValid());
+
+    if (ifhformat.isValid()) {
+        QTextFrame *frame = qobject_cast<QTextFrame *>
+                (doc->objectForFormat(ifhformat));
+
+        Q_ASSERT(frame);
+
+        if (frame) {
+            QTextDocumentLayout *tdl =
+                    qobject_cast<QTextDocumentLayout *>
+                    (doc->documentLayout());
+
+            Q_ASSERT(tdl);
+
+            if (tdl) {
+                return tdl->frameSize(frame);
+            }
+        }
+    }
+
+    Q_ASSERT(false);
+
+    return QSizeF();
 }
 
 
@@ -555,19 +583,22 @@ void QTextInlineFrameHandler::drawObject(
 
     if (ifhformat.isValid()) {
 
-        QTextFrame *frame = ifhformat.getFrame();
+        QTextFrame *frame = qobject_cast<QTextFrame *>
+                (doc->objectForFormat(ifhformat));
 
-        QAbstractTextDocumentLayout::PaintContext context;
+        if (frame) {
+            QAbstractTextDocumentLayout *layout = doc->documentLayout();
+            QTextDocumentLayout *tlayout =
+                    qobject_cast<QTextDocumentLayout *> (layout);
 
-        QAbstractTextDocumentLayout *layout = doc->documentLayout();
-        QTextDocumentLayout *tlayout =
-                qobject_cast<QTextDocumentLayout *> (layout);
+            QAbstractTextDocumentLayout::PaintContext context;
 
-        if (tlayout)
-            tlayout->drawFrame(rect.topLeft(), painter, context, frame);
-/// TODO (Fn): QAbstractTextDocumentLayout::drawFrame
-//        else
-//            layout->drawFrame(rect.topLeft(), painter, context, frame);
+            if (tlayout)
+                tlayout->drawFrame(rect.topLeft(), painter, context, frame);
+            /// TODO (Fn): QAbstractTextDocumentLayout::drawFrame
+//            else
+//                layout->drawFrame(rect.topLeft(), painter, context, frame);
+        }
     }
 }
 
@@ -1251,6 +1282,47 @@ Qt::LayoutDirection QTextBlock::textDirection() const
     return Qt::LeftToRight;
 }
 
+
+bool QTextBlock::hasInlineFrame() const
+{
+    Q_ASSERT(p->blockMap().fragment(n)->hasInlineFrame
+             ? p->buffer().at(
+                 p->find(position() + length() - 2).value()->stringPosition)
+             == QChar::ObjectReplacementCharacter
+             : true);
+
+    return p->blockMap().fragment(n)->hasInlineFrame;
+}
+
+
+QTextBlock QTextBlock::nextAfterInlineFrame() const
+{
+    if (!isValid() || !hasInlineFrame())
+        return QTextBlock();
+
+    const QTextFragmentData * const frag =
+            p->find(position() + length() - 2).value();
+    // -2 to omit the block separator char and
+    // point to QChar::ObjectReplacementCharacter at last block position
+
+    Q_ASSERT(p->formatCollection()->
+             inlineFrameHandlerFormat(frag->format).isValid());
+
+    QTextFrame *frame =
+            qobject_cast<QTextFrame *> (p->objectForFormat(frag->format));
+
+    if (frame) {
+        Q_ASSERT(frame->frameFormat().position() ==
+                 QTextFrameFormat::FloatInline);
+        return p->blocksFind(frame->lastPosition() +1);
+    }
+
+    Q_ASSERT(false);
+
+    return QTextBlock();
+}
+
+
 /*!
     Returns the block's contents as plain text.
 
@@ -1263,14 +1335,34 @@ QString QTextBlock::text() const
 
     const QString buffer = p->buffer();
     QString text;
-    text.reserve(length());
 
-    const int pos = position();
-    QTextDocumentPrivate::FragmentIterator it = p->find(pos);
-    QTextDocumentPrivate::FragmentIterator end = p->find(pos + length() - 1); // -1 to omit the block separator char
-    for (; it != end; ++it) {
-        const QTextFragmentData * const frag = it.value();
-        text += QString::fromRawData(buffer.constData() + frag->stringPosition, frag->size_array[0]);
+    QTextBlock currBlock = *this;
+
+    while (1) {
+        int pos = currBlock.position();
+        int len = currBlock.length();
+
+        QString textCurrBlock;
+        textCurrBlock.reserve(len);
+
+        QTextDocumentPrivate::FragmentIterator it = p->find(pos);
+        QTextDocumentPrivate::FragmentIterator end = p->find(pos + len - 1);
+        // -1 to omit the block separator char
+
+        for (; it != end; ++it) {
+            const QTextFragmentData * const frag = it.value();
+            textCurrBlock += QString::fromRawData(
+                        buffer.constData() + frag->stringPosition,
+                        frag->size_array[0]);
+        }
+
+        text += textCurrBlock;
+
+        if (currBlock.hasInlineFrame()) {
+            currBlock = currBlock.nextAfterInlineFrame();
+            Q_ASSERT(currBlock.isValid());
+        } else
+            break;
     }
 
     return text;
